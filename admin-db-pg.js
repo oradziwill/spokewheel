@@ -95,6 +95,12 @@ const adminDb = {
   },
 
   get: (query, params, callback) => {
+    // Handle case where params is actually the callback (2-arg call)
+    if (typeof params === 'function' && !callback) {
+      callback = params;
+      params = [];
+    }
+
     let pgQuery = query
       .replace(/DATETIME/g, "TIMESTAMP")
       .replace(/BOOLEAN/g, "BOOLEAN");
@@ -109,15 +115,23 @@ const adminDb = {
     }
 
     pool.query(pgQuery, pgParams, (err, res) => {
-      if (err) {
-        callback(err, null);
-      } else {
-        callback(null, res.rows[0] || null);
+      if (callback) {
+        if (err) {
+          callback(err, null);
+        } else {
+          callback(null, res.rows[0] || null);
+        }
       }
     });
   },
 
   all: (query, params, callback) => {
+    // Handle case where params is actually the callback (2-arg call)
+    if (typeof params === 'function' && !callback) {
+      callback = params;
+      params = [];
+    }
+
     let pgQuery = query
       .replace(/DATETIME/g, "TIMESTAMP")
       .replace(/BOOLEAN/g, "BOOLEAN");
@@ -132,10 +146,12 @@ const adminDb = {
     }
 
     pool.query(pgQuery, pgParams, (err, res) => {
-      if (err) {
-        callback(err, null);
-      } else {
-        callback(null, res.rows || []);
+      if (callback) {
+        if (err) {
+          callback(err, null);
+        } else {
+          callback(null, res.rows || []);
+        }
       }
     });
   },

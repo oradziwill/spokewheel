@@ -62,8 +62,9 @@ git push -u origin main
 5. **Configure Service:**
    - Click on your service (Node.js app)
    - Go to "Settings" tab
-   - **Build Command:** `cd client && npm install && npm run build && cd .. && npm install --production`
+   - **Build Command:** `npm install && cd client && npm install && npm run build`
    - **Start Command:** `node server.js`
+   - **Note:** Railway will auto-detect from `railway.json` if present
 6. **Add Environment Variables:**
    - Go to "Variables" tab
    - Add these variables:

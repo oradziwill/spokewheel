@@ -1,30 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import "../App.css";
 import LinkFeedback from "./LinkFeedback";
 
-interface Person {
-  id: number;
-  name: string;
-  email: string;
-  department: string;
-  position: string;
-}
-
 function LinkApp() {
   const { token } = useParams<{ token: string }>();
-  const [person, setPerson] = useState<Person | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (token) {
-      fetchPersonInfo(token);
-    } else {
-      setError("Invalid feedback link");
-      setLoading(false);
-    }
-  }, [token]);
 
   const safeJsonParse = async (response: Response) => {
     const contentType = response.headers.get("content-type");
@@ -38,7 +20,7 @@ function LinkApp() {
     return response.json();
   };
 
-  const fetchPersonInfo = async (token: string) => {
+  const fetchPersonInfo = useCallback(async (token: string) => {
     try {
       const response = await fetch(`/api/feedback/${token}`);
       if (!response.ok) {
@@ -52,15 +34,24 @@ function LinkApp() {
         return;
       }
 
-      const data = await safeJsonParse(response);
-      setPerson(data.person);
+      await safeJsonParse(response);
+      // Person data is fetched but not needed here - LinkFeedback will fetch it
     } catch (error) {
       console.error("Error fetching person info:", error);
       setError("Failed to load person information");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      fetchPersonInfo(token);
+    } else {
+      setError("Invalid feedback link");
+      setLoading(false);
+    }
+  }, [token, fetchPersonInfo]);
 
   if (loading) {
     return (

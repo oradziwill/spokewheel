@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import UserAuth from "./UserAuth";
 
 interface Person {
@@ -44,7 +44,7 @@ const PeopleManagement: React.FC = () => {
     position: "",
   });
 
-  const [linkFormData, setLinkFormData] = useState({
+  const [linkFormData] = useState({
     expiresInDays: 30,
   });
 
@@ -65,27 +65,6 @@ const PeopleManagement: React.FC = () => {
       }
     }
   }, []);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchPeople();
-    }
-  }, [isAuthenticated]);
-
-  const handleLogin = (userData: any) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("username");
-    localStorage.removeItem("password");
-    setUser(null);
-    setIsAuthenticated(false);
-    setPeople([]);
-  };
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("authToken");
@@ -110,7 +89,17 @@ const PeopleManagement: React.FC = () => {
     return response.json();
   };
 
-  const fetchPeople = async () => {
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("username");
+    localStorage.removeItem("password");
+    setUser(null);
+    setIsAuthenticated(false);
+    setPeople([]);
+  };
+
+  const fetchPeople = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -136,7 +125,19 @@ const PeopleManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchPeople();
+    }
+  }, [isAuthenticated, fetchPeople]);
+
+  const handleLogin = (userData: any) => {
+    setUser(userData);
+    setIsAuthenticated(true);
   };
+
 
   const fetchLinks = async (personId: number) => {
     try {

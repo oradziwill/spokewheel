@@ -137,9 +137,11 @@ git commit -m "Initial commit - SpokeWheel app"
 5. **Set Build and Start Commands:**
 
    - In your service settings, go to "Settings"
-   - **Build Command:** `cd client && npm install && npm run build && cd .. && npm install --production`
+   - **Build Command:** `npm install && cd client && npm install && npm run build`
    - **Start Command:** `node server.js`
    - **Root Directory:** Leave empty (or set to `/`)
+
+   **Note:** Railway will use the `railway.json` file if present, which has the correct build command configured.
 
 6. **Deploy:**
    - Railway will automatically start deploying
@@ -264,7 +266,7 @@ Follow Step 1-3 from Railway section (prepare code, create Git repo, push to Git
 3. Configure:
    - **Name:** `spokewheel`
    - **Environment:** `Node`
-   - **Build Command:** `cd client && npm install && npm run build && cd .. && npm install --production`
+   - **Build Command:** `npm install && cd client && npm install && npm run build`
    - **Start Command:** `node server.js`
    - **Plan:** Free (or paid)
 
@@ -315,11 +317,39 @@ If you see database errors:
 
 ### Build Failures
 
-If build fails:
+If build fails with "exit code: 1":
 
-- Check Railway/Render logs
-- Verify `package.json` has all dependencies
-- Ensure `client/package.json` exists
+1. **Check the build command:**
+
+   - Use: `npm install && cd client && npm install && npm run build`
+   - Make sure root dependencies are installed first
+
+2. **Check Railway logs:**
+
+   - Go to your service → "Deployments" → Latest deployment → "View Logs"
+   - Look for specific error messages (TypeScript errors, missing dependencies, etc.)
+
+3. **Common issues:**
+
+   - **Missing dependencies:** Ensure `package.json` and `client/package.json` have all required packages
+   - **TypeScript errors:** Fix any TypeScript compilation errors in `client/src`
+   - **Node version:** Railway should auto-detect, but you can set `NODE_VERSION=18` in environment variables
+   - **Memory issues:** If build runs out of memory, Railway will show this in logs
+
+4. **Alternative build command (if above doesn't work):**
+
+   ```
+   npm ci && cd client && npm ci && npm run build
+   ```
+
+   (Uses `npm ci` for more reliable, reproducible builds)
+
+5. **Verify locally first:**
+   ```bash
+   npm install
+   cd client && npm install && npm run build
+   ```
+   If this fails locally, fix those errors first.
 
 ### Domain Not Working
 

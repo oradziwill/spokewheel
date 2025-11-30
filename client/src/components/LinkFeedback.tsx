@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 
 interface Axis {
   id: number;
@@ -40,10 +40,6 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [token]);
-
   const safeJsonParse = async (response: Response) => {
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
@@ -56,7 +52,7 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
     return response.json();
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       // Fetch person info
       const personResponse = await fetch(`/api/feedback/${token}`);
@@ -91,7 +87,11 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleAxisClick = (
     axisName: string,
@@ -317,7 +317,6 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
         >
           {axes.map((axis, index) => {
             const angle = (index * 2 * Math.PI) / axes.length - Math.PI / 2;
-            const markerPosition = getMarkerPosition(axis.name);
 
             // Calculate label positions - use perpendicular offset from axis
             const centerX = 325; // Center of 650px circle

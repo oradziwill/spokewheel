@@ -35,7 +35,28 @@ const adminDb = {
       .replace(
         /CHECK\(role IN \('user', 'admin'\)\)/g,
         "CHECK(role IN ('user', 'admin'))"
-      );
+      )
+      // Convert SQLite boolean comparisons to PostgreSQL boolean
+      .replace(/\bis_active\s*=\s*1\b/gi, "is_active = true")
+      .replace(/\bis_active\s*=\s*0\b/gi, "is_active = false")
+      .replace(/\bfl\.is_active\s*=\s*1\b/gi, "fl.is_active = true")
+      .replace(/\bfl\.is_active\s*=\s*0\b/gi, "fl.is_active = false")
+      // Handle SET is_active = 0/1 in UPDATE statements
+      .replace(/\bSET\s+is_active\s*=\s*0\b/gi, "SET is_active = false")
+      .replace(/\bSET\s+is_active\s*=\s*1\b/gi, "SET is_active = true")
+      .replace(/\bSET\s+fl\.is_active\s*=\s*0\b/gi, "SET fl.is_active = false")
+      .replace(/\bSET\s+fl\.is_active\s*=\s*1\b/gi, "SET fl.is_active = true")
+      // Handle WHERE clauses with boolean in UPDATE/DELETE
+      .replace(
+        /\bWHERE\s+fl\.is_active\s*=\s*1\b/gi,
+        "WHERE fl.is_active = true"
+      )
+      .replace(
+        /\bWHERE\s+fl\.is_active\s*=\s*0\b/gi,
+        "WHERE fl.is_active = false"
+      )
+      .replace(/\bAND\s+fl\.is_active\s*=\s*1\b/gi, "AND fl.is_active = true")
+      .replace(/\bAND\s+fl\.is_active\s*=\s*0\b/gi, "AND fl.is_active = false");
 
     // Handle INSERT OR IGNORE - need to add ON CONFLICT clause
     if (pgQuery.includes("INSERT OR IGNORE")) {
@@ -96,14 +117,22 @@ const adminDb = {
 
   get: (query, params, callback) => {
     // Handle case where params is actually the callback (2-arg call)
-    if (typeof params === 'function' && !callback) {
+    if (typeof params === "function" && !callback) {
       callback = params;
       params = [];
     }
 
     let pgQuery = query
       .replace(/DATETIME/g, "TIMESTAMP")
-      .replace(/BOOLEAN/g, "BOOLEAN");
+      .replace(/BOOLEAN/g, "BOOLEAN")
+      // Convert SQLite boolean comparisons to PostgreSQL boolean
+      .replace(/\bis_active\s*=\s*1\b/gi, "is_active = true")
+      .replace(/\bis_active\s*=\s*0\b/gi, "is_active = false")
+      .replace(/\bfl\.is_active\s*=\s*1\b/gi, "fl.is_active = true")
+      .replace(/\bfl\.is_active\s*=\s*0\b/gi, "fl.is_active = false")
+      // Handle JOIN conditions with boolean
+      .replace(/\bAND\s+fl\.is_active\s*=\s*1\b/gi, "AND fl.is_active = true")
+      .replace(/\bAND\s+fl\.is_active\s*=\s*0\b/gi, "AND fl.is_active = false");
 
     let paramIndex = 1;
     const pgParams = [];
@@ -127,14 +156,22 @@ const adminDb = {
 
   all: (query, params, callback) => {
     // Handle case where params is actually the callback (2-arg call)
-    if (typeof params === 'function' && !callback) {
+    if (typeof params === "function" && !callback) {
       callback = params;
       params = [];
     }
 
     let pgQuery = query
       .replace(/DATETIME/g, "TIMESTAMP")
-      .replace(/BOOLEAN/g, "BOOLEAN");
+      .replace(/BOOLEAN/g, "BOOLEAN")
+      // Convert SQLite boolean comparisons to PostgreSQL boolean
+      .replace(/\bis_active\s*=\s*1\b/gi, "is_active = true")
+      .replace(/\bis_active\s*=\s*0\b/gi, "is_active = false")
+      .replace(/\bfl\.is_active\s*=\s*1\b/gi, "fl.is_active = true")
+      .replace(/\bfl\.is_active\s*=\s*0\b/gi, "fl.is_active = false")
+      // Handle JOIN conditions with boolean
+      .replace(/\bAND\s+fl\.is_active\s*=\s*1\b/gi, "AND fl.is_active = true")
+      .replace(/\bAND\s+fl\.is_active\s*=\s*0\b/gi, "AND fl.is_active = false");
 
     let paramIndex = 1;
     const pgParams = [];

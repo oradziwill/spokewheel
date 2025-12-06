@@ -37,6 +37,7 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
   const [selectedSource, setSelectedSource] = useState("");
   const [evaluatorName, setEvaluatorName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -172,11 +173,8 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
 
       if (response.ok) {
         const result = await safeJsonParse(response);
-        alert(`Feedback submitted successfully for ${result.person_name}!`);
-        // Reset form
-        setFeedback({});
-        setEvaluatorName("");
-        setSelectedSource("");
+        // Mark as submitted to show thank you message
+        setSubmitted(true);
       } else {
         try {
           const errorData = await safeJsonParse(response);
@@ -247,6 +245,33 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
             {error}
           </div>
           <p>Please check the link and try again.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show thank you message if feedback has been submitted
+  if (submitted) {
+    return (
+      <div className="card">
+        <div style={{ textAlign: "center", padding: "60px 40px" }}>
+          <div
+            style={{ fontSize: "48px", marginBottom: "20px", color: "#28a745" }}
+          >
+            ✓
+          </div>
+          <h2 style={{ marginBottom: "20px", color: "#333" }}>
+            Thank you for your feedback!
+          </h2>
+          {person && (
+            <p style={{ fontSize: "18px", color: "#666", marginTop: "20px" }}>
+              Your feedback for <strong>{person.name}</strong> has been
+              received.
+            </p>
+          )}
+          <p style={{ fontSize: "16px", color: "#999", marginTop: "30px" }}>
+            This link can only be used once and is now inactive.
+          </p>
         </div>
       </div>
     );

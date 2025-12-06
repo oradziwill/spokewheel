@@ -387,6 +387,18 @@ app.post("/api/feedback/:token", (req, res) => {
         feedback
       );
 
+      // Deactivate the link after successful submission (single-use link)
+      adminDb.run(
+        "UPDATE feedback_links SET is_active = false WHERE link_token = ?",
+        [token],
+        (deactivateErr) => {
+          if (deactivateErr) {
+            console.error("Error deactivating link:", deactivateErr);
+            // Still return success since feedback was saved
+          }
+        }
+      );
+
       res.json({
         success: true,
         message: "Feedback saved successfully",

@@ -163,7 +163,39 @@ git commit -m "Initial commit - SpokeWheel app"
    - Under "Custom Domain", enter: `spokewheel.app`
    - Railway will provide DNS records to add
 
-3. **Update DNS in Squarespace:**
+3. **Update DNS Records:**
+
+   **Option A: Using Cloudflare (Recommended) ⭐**
+
+   - Log into Cloudflare dashboard
+   - Select your domain `spokewheel.app`
+   - Go to "DNS" → "Records"
+   - **Add CNAME record for root domain:**
+     - Type: `CNAME`
+     - Name: `@` (or leave blank for root domain)
+     - Target: `spokewheel-production.up.railway.app` (your Railway domain)
+     - Proxy status: **Proxied** (orange cloud) ✅
+     - TTL: Auto
+   - **Add CNAME for www:**
+     - Type: `CNAME`
+     - Name: `www`
+     - Target: `spokewheel-production.up.railway.app`
+     - Proxy status: **Proxied** (orange cloud) ✅
+     - TTL: Auto
+
+   **Enable Free SSL Certificate in Cloudflare:**
+
+   - Go to "SSL/TLS" in Cloudflare dashboard
+   - Under "Overview", ensure SSL/TLS encryption mode is set to **"Full"** or **"Full (strict)"**
+   - Go to "SSL/TLS" → "Edge Certificates"
+   - Make sure **"Universal SSL"** is enabled (it's free and enabled by default)
+   - If you see the error "This hostname is not covered by a certificate":
+     - Wait 5-15 minutes for Universal SSL to provision (usually happens automatically)
+     - Check "Edge Certificates" section - you should see "Active Certificate" appear
+     - If it doesn't appear after 15 minutes, click "Restart Universal SSL" button
+   - **Important:** Keep proxy status as "Proxied" (orange cloud) - this enables Cloudflare's free SSL
+
+   **Option B: Using Squarespace Domains:**
 
    - Log into Squarespace Domains
    - Go to DNS settings for `spokewheel.app`
@@ -188,43 +220,42 @@ git commit -m "Initial commit - SpokeWheel app"
 
    - DNS changes can take 5-60 minutes
    - Check with: `dig spokewheel.app` or `nslookup spokewheel.app`
+   - If using Cloudflare with proxy enabled, DNS will show Cloudflare IPs (not Railway IPs) - this is normal!
 
 5. **Verify HTTPS:**
-   - Railway automatically provisions SSL certificates
-   - Once DNS propagates, `https://spokewheel.app` should work
+
+   - **If using Cloudflare:** SSL certificate will be provisioned automatically (wait 5-15 minutes)
+   - **If using Squarespace:** Railway automatically provisions SSL certificates
+   - Once DNS propagates and SSL is active, `https://spokewheel.app` should work
+   - Test: Visit `https://spokewheel.app` in your browser
 
 ### Step 6: Initialize Database
 
-Once your app is deployed, you need to initialize the database tables:
+The database should **automatically initialize** when the server starts. The `admin-db-pg.js` file handles table creation automatically.
 
-1. **Access Railway's PostgreSQL:**
+**To verify database initialization:**
 
-   - In Railway, click on your PostgreSQL service
-   - Go to "Connect" tab
-   - Copy the connection string
+1. **Check Railway Logs:**
 
-2. **Run Database Initialization:**
+   - Go to Railway → Your service → "Deployments" → Latest deployment → "View Logs"
+   - Look for these messages:
+     - ✅ `"Connected to PostgreSQL database"` - Connection successful
+     - ✅ `"Default admin user created (username: admin, password: admin123)"` - Tables initialized
+   - ❌ If you see `"PostgreSQL connection error"` - See troubleshooting below
 
-   - You can use Railway's built-in PostgreSQL console, or
-   - Connect from your local machine using the connection string
+2. **Test the Database:**
+   - Visit your app URL
+   - Try to register a user or login to admin panel
+   - If you get "Database error", check the troubleshooting section below
 
-   The easiest way is to add a one-time script. Create a file `init-db.js`:
+**If database doesn't auto-initialize:**
 
-   ```javascript
-   // This will run the database initialization
-   require("dotenv").config();
-   const adminDb = require("./admin-db-pg");
+The database initialization happens automatically when `admin-db-pg.js` is loaded. If it's not working:
 
-   console.log("Database initialized!");
-   ```
-
-   Then in Railway, add a temporary environment variable:
-
-   - `INIT_DB=true`
-
-   And modify `server.js` to run initialization on first start (or run it manually via Railway's console).
-
-   **Alternative:** Use Railway's PostgreSQL console to run the SQL from `admin-db-pg.js` manually.
+1. Check that `DB_TYPE=postgresql` is set in environment variables
+2. Verify all database connection variables are set correctly
+3. Check Railway logs for specific error messages
+4. See "Database Error Troubleshooting" section below
 
 ### Step 7: Test Your Deployment
 
@@ -307,13 +338,114 @@ DB_SSL=true
 
 ## 🔧 Troubleshooting
 
-### Database Connection Issues
+### Database Error Troubleshooting
 
-If you see database errors:
+If you see **"Database error"** or connection issues:
 
-- Verify environment variables are set correctly
-- Check that PostgreSQL service is running
-- Ensure database credentials match
+#### Step 1: Check Environment Variables
+
+In Railway, go to your service → "Variables" tab and verify these are set:
+
+```
+DB_TYPE=postgresql
+DB_HOST=${{Postgres.PGHOST}}
+DB_PORT=${{Postgres.PGPORT}}
+DB_NAME=${{Postgres.PGDATABASE}}
+DB_USER=${{Postgres.PGUSER}}
+DB_PASSWORD=${{Postgres.PGPASSWORD}}
+DB_SSL=true
+```
+
+**Important:** Make sure you've added the PostgreSQL database service first! The `${{Postgres.*}}` variables only work if you have a PostgreSQL service in your Railway project.
+
+#### Step 2: Check Railway Logs
+
+1. Go to Railway → Your service → "Deployments" → Latest → "View Logs"
+2. Look for these error patterns:
+
+   **"PostgreSQL connection error" or "ECONNREFUSED":**
+
+   - Database service might not be running
+   - Solution: Check that PostgreSQL service is running in Railway
+
+   **"password authentication failed":**
+
+   - Wrong database password
+   - Solution: Verify `DB_PASSWORD=${{Postgres.PGPASSWORD}}` is set correctly
+
+   **"database does not exist":**
+
+   - Database name is wrong
+   - Solution: Verify `DB_NAME=${{Postgres.PGDATABASE}}` matches Railway's database name
+
+   **"relation does not exist" or "table does not exist":**
+
+   - Tables weren't created
+   - Solution: The `admin-db-pg.js` should auto-create tables. Check logs for initialization errors
+
+#### Step 3: Verify Database Service
+
+1. In Railway, check that you have a PostgreSQL service:
+   - Click "+ New" → "Database" → "Add PostgreSQL" (if missing)
+2. Verify the PostgreSQL service is running (should show "Active" status)
+
+#### Step 4: Test Database Connection
+
+1. In Railway, click on your PostgreSQL service
+2. Go to "Connect" tab
+3. Copy the connection string
+4. Try connecting with a PostgreSQL client to verify the database is accessible
+
+#### Step 5: Manual Database Initialization (if needed)
+
+If tables aren't being created automatically:
+
+1. **Access Railway's PostgreSQL Console:**
+
+   - In Railway, click on PostgreSQL service → "Data" tab
+   - Or use "Connect" tab to get connection details
+
+2. **Check if tables exist:**
+
+   ```sql
+   \dt
+   ```
+
+   (Should show: admin_users, users, people, feedback_links, feedback_axes, admin_feedback_results)
+
+3. **If tables don't exist, they should be created automatically when the app starts.**
+   - Check Railway logs for initialization errors
+   - The `admin-db-pg.js` file runs `initializeTables()` automatically
+
+#### Step 6: Common Fixes
+
+**Fix 1: Missing DB_TYPE variable**
+
+- Add `DB_TYPE=postgresql` to environment variables
+- Restart the service
+
+**Fix 2: Wrong database adapter**
+
+- If `DB_TYPE` is not set or set to `sqlite`, the app will try to use SQLite
+- Make sure `DB_TYPE=postgresql` is set
+
+**Fix 3: SSL Connection Issues**
+
+- Make sure `DB_SSL=true` is set (Railway requires SSL)
+- If you see SSL errors, verify the connection string
+
+**Fix 4: Database Not Initialized**
+
+- The database should auto-initialize on first start
+- Check Railway logs for "Connected to PostgreSQL database" message
+- If you see connection errors, fix those first
+
+#### Still Having Issues?
+
+1. **Check Railway Logs** for the exact error message
+2. **Verify all environment variables** are set correctly
+3. **Ensure PostgreSQL service** is running and connected
+4. **Restart the service** after making changes
 
 ### Build Failures
 
@@ -356,9 +488,58 @@ If build fails with "exit code: 1":
 If `https://spokewheel.app` doesn't work:
 
 - Wait 15-60 minutes for DNS propagation
-- Verify DNS records in Squarespace
+- Verify DNS records in your DNS provider (Cloudflare or Squarespace)
 - Check Railway/Render custom domain configuration
 - Use `dig spokewheel.app` to verify DNS
+
+### Cloudflare SSL Certificate Error
+
+If you see: **"This hostname is not covered by a certificate"**:
+
+1. **Enable Universal SSL (Free):**
+
+   - Go to Cloudflare dashboard → Your domain → "SSL/TLS"
+   - Click "Edge Certificates"
+   - Ensure "Universal SSL" is enabled (should be on by default)
+   - If disabled, click "Enable Universal SSL"
+
+2. **Wait for Certificate Provisioning:**
+
+   - Universal SSL certificates are provisioned automatically
+   - Usually takes 5-15 minutes, can take up to 24 hours
+   - Check "Edge Certificates" section - you should see "Active Certificate" appear
+   - Status will show "Active Certificate" when ready
+
+3. **Restart Universal SSL (if needed):**
+
+   - In "Edge Certificates", scroll down
+   - Click "Restart Universal SSL" button
+   - Wait 5-15 minutes for certificate to be re-provisioned
+
+4. **Check SSL/TLS Mode:**
+
+   - Go to "SSL/TLS" → "Overview"
+   - Set encryption mode to **"Full"** or **"Full (strict)"**
+   - **"Full"** = Cloudflare ↔ Origin (Railway) uses HTTPS
+   - **"Full (strict)"** = Same, but validates Railway's certificate (recommended if Railway has valid cert)
+
+5. **Verify Proxy Status:**
+
+   - Go to "DNS" → "Records"
+   - Ensure your CNAME records have **orange cloud** (Proxied) enabled
+   - SSL only works when proxy is enabled
+
+6. **You DON'T need Advanced Certificate Manager:**
+   - Universal SSL is free and covers all proxied hostnames
+   - The error message about "Advanced Certificate Manager" is misleading
+   - Just wait for Universal SSL to provision (it's automatic)
+
+**Note:** If using Railway, Railway also provides SSL certificates. With Cloudflare in front, you get:
+
+- Cloudflare SSL (visitor ↔ Cloudflare)
+- Railway SSL (Cloudflare ↔ Railway)
+
+Both are free and work together automatically!
 
 ### App Not Starting
 

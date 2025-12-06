@@ -462,7 +462,9 @@ router.get("/feedback/:token", (req, res) => {
     }
 
     if (!row) {
-      return res.status(404).json({ error: "Invalid or expired link" });
+      return res
+        .status(404)
+        .json({ error: "Invalid, expired, or already used link" });
     }
 
     // Check if link has expired

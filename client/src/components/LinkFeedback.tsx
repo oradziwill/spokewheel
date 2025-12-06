@@ -172,7 +172,7 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
       });
 
       if (response.ok) {
-        const result = await safeJsonParse(response);
+        await safeJsonParse(response);
         // Mark as submitted to show thank you message
         setSubmitted(true);
       } else {

@@ -56,7 +56,17 @@ const adminDb = {
         "WHERE fl.is_active = false"
       )
       .replace(/\bAND\s+fl\.is_active\s*=\s*1\b/gi, "AND fl.is_active = true")
-      .replace(/\bAND\s+fl\.is_active\s*=\s*0\b/gi, "AND fl.is_active = false");
+      .replace(/\bAND\s+fl\.is_active\s*=\s*0\b/gi, "AND fl.is_active = false")
+      // Handle boolean literals in INSERT VALUES clauses for is_active column
+      // Pattern: VALUES (?, ?, 1, ...) or VALUES (?, ?, 0, ...) where 1/0 is for is_active
+      // Convert literal 1/0 to true/false when they appear as the 3rd value in VALUES clause
+      // Match: VALUES ( followed by param, comma, param, comma, then literal 1 or 0
+      .replace(/\bVALUES\s*\([^,)]+,\s*[^,)]+,\s*\b1\b/gi, (match) => {
+        return match.replace(/\b1\b/, "true");
+      })
+      .replace(/\bVALUES\s*\([^,)]+,\s*[^,)]+,\s*\b0\b/gi, (match) => {
+        return match.replace(/\b0\b/, "false");
+      });
 
     // Handle INSERT OR IGNORE - need to add ON CONFLICT clause
     if (pgQuery.includes("INSERT OR IGNORE")) {

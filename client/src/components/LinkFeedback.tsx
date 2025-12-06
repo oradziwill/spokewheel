@@ -193,30 +193,60 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
 
   const getLabelDescription = (axisName: string, side: "left" | "right") => {
     const descriptions: { [key: string]: { left: string; right: string } } = {
-      personality: {
-        left: "🔴 INTROVERT\n\n• Prefers quiet, low-stimulation environments\n• Gains energy from alone time and reflection\n• Thinks before speaking, processes internally\n• Values deep, meaningful conversations\n• Works best with minimal interruptions",
+      approach_style: {
+        left: "🔴 CHALLENGE\n\nIn interactions, they consistently create a sense of being challenged—questioning ideas, work quality, and emotional or intellectual positions.",
         right:
-          "🔵 EXTROVERT\n\n• Enjoys social interactions and group activities\n• Gains energy from being around people\n• Thinks out loud, processes externally\n• Values networking and social connections\n• Works best in collaborative environments",
+          "🔵 CARE\n\nTheir interactions centre fully on the other person—marked by deep listening, empathy, understanding, and support.",
       },
-      communication: {
-        left: "🔴 DIRECT\n\n• Straightforward, no-nonsense communication\n• Gets to the point quickly and efficiently\n• Values clarity and brevity over politeness\n• Prefers facts over emotions in discussions\n• May seem blunt but means well",
+      planning_style: {
+        left: "🔴 STRATEGISING\n\nThey focus strongly on how to act—continually building or refining detailed strategies and action plans, without articulating why a new direction is needed.",
         right:
-          "🔵 DIPLOMATIC\n\n• Tactful and considerate communication\n• Carefully considers others' feelings\n• Values harmony and positive relationships\n• Uses gentle language and soft approaches\n• Skilled at navigating sensitive topics",
+          "🔵 VISIONEERING\n\nThey focus strongly on why to act—creating and articulating compelling visions of an end state, without translating them into next steps or practical actions.",
       },
-      decision_making: {
-        left: "🔴 ANALYTICAL\n\n• Data-driven, evidence-based decisions\n• Uses logical reasoning and systematic analysis\n• Prefers thorough research before deciding\n• Values objective facts over subjective feelings\n• Methodical and detail-oriented approach",
+      influencing_style: {
+        left: "🔴 TELLING\n\nThey communicate only in statements, never asking questions.",
         right:
-          "🔵 INTUITIVE\n\n• Gut-feeling and instinct-based decisions\n• Creative problem-solving and flexible thinking\n• Trusts inner voice and first impressions\n• Values creativity and innovation\n• Quick to adapt and pivot when needed",
+          "🔵 ASKING\n\nThey communicate only by asking questions, never making statements.",
       },
-      work_style: {
-        left: "🔴 INDEPENDENT\n\n• Prefers working alone and self-directed tasks\n• Takes full ownership and responsibility\n• Values autonomy and personal control\n• Works well with minimal supervision\n• Focuses deeply on individual projects",
+      interaction_style: {
+        left: "🔴 1-on-GROUPS\n\nThey create organisational impact and value only when working with groups of three or more people.",
         right:
-          "🔵 COLLABORATIVE\n\n• Enjoys team work and group projects\n• Values input and perspectives from others\n• Builds on collective ideas and synergy\n• Thrives in team environments\n• Believes in the power of diverse thinking",
+          "🔵 1-on-1s\n\nThey create organisational impact and value only in one-on-one settings.",
+      },
+      prioritising: {
+        left: "🔴 PRIORITISING\n\nThey structure work clearly: priorities are explicit, always known, and aligned with all stakeholders.",
+        right:
+          "🔵 CHAOS\n\nThey allow work to flow according to mood or moment. Direct reports self-organise without guidance, and all tasks feel equally important because priorities are undefined.",
+      },
+      communication_mode: {
+        left: "🔴 EXPRESSING\n\nThey use every available moment to speak, often taking space that others may need.",
+        right:
+          "🔵 LISTENING\n\nThey dedicate all available time to listening and note-taking, sometimes leaving without saying a word—and feeling satisfied.",
       },
       feedback_style: {
-        left: "🔴 CONSTRUCTIVE\n\n• Focuses on improvement and growth\n• Points out specific areas for development\n• Direct, honest feedback for better results\n• Values actionable suggestions\n• Helps others reach their potential",
+        left: "🔴 NEGATIVE FEEDBACK\n\nThey notice and address only negative or problematic behaviours.",
         right:
-          "🔵 SUPPORTIVE\n\n• Encourages and motivates others\n• Focuses on strengths and positive aspects\n• Gentle, uplifting feedback approach\n• Builds confidence and self-esteem",
+          "🔵 POSITIVE FEEDBACK\n\nThey notice and address only positive or desirable behaviours.",
+      },
+      risk_style: {
+        left: "🔴 PREVENTION\n\nWhen faced with an opportunity, they repeatedly analyse and document risks, often delaying action until the opportunity is lost.",
+        right:
+          "🔵 PRO-MOTION\n\nWhen faced with an opportunity, they take immediate action based on intuition or precedent, without waiting for analysis.",
+      },
+      behavior_style: {
+        left: "🔴 PUSHING\n\nWhen sensing disagreement, they shift into a competitive, win-lose mindset, determined to prevail and prove their viewpoint right.",
+        right:
+          "🔵 ADAPTIVE\n\nWhen sensing disagreement, they yield fully—accepting the other person's viewpoint without asserting their own.",
+      },
+      management_style: {
+        left: "🔴 MICRO-MANAGEMENT\n\nThey immerse themselves deeply in others' work details, in a way that feels like oversight or surveillance.",
+        right:
+          '🔵 MACRO-MANAGEMENT\n\nThey remain at a very high, distant "helicopter view," leaving others wishing they understood more about the actual work being done.',
+      },
+      communication_style: {
+        left: "🔴 ASYNCHRONOUS\n\nThey communicate primarily in writing and avoid real-time, synchronous conversations.",
+        right:
+          "🔵 SYNCHRONOUS\n\nThey communicate primarily through real-time voice or video conversations, responding and adapting on the spot.",
       },
     };
 

@@ -29,6 +29,27 @@ const CircularFeedback: React.FC<CircularFeedbackProps> = ({
   sources,
   onSubmit,
 }) => {
+  // Place axes in specific ID order: 8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6
+  const desiredIdOrder = [8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6];
+
+  // Create map by ID for easy lookup
+  const axesById = new Map<number, (typeof axes)[0]>();
+  axes.forEach((axis) => {
+    const id = parseInt(String(axis.id));
+    if (!axesById.has(id)) {
+      axesById.set(id, axis);
+    }
+  });
+
+  // Build array in desired ID order
+  const sortedAxes: (typeof axes)[0][] = [];
+  for (const id of desiredIdOrder) {
+    const axis = axesById.get(id);
+    if (axis) {
+      sortedAxes.push(axis);
+    }
+  }
+
   const [userName, setUserName] = useState("");
   const [selectedSource, setSelectedSource] = useState("");
   const [feedback, setFeedback] = useState<{
@@ -127,8 +148,35 @@ const CircularFeedback: React.FC<CircularFeedbackProps> = ({
     const feedbackData = feedback[axisName];
     if (!feedbackData) return null;
 
-    // Use the exact click position
-    return { x: feedbackData.clickX, y: feedbackData.clickY };
+    // Find the axis index to get its angle
+    const axisIndex = sortedAxes.findIndex((axis) => axis.name === axisName);
+    if (axisIndex === -1) return null;
+
+    // Calculate the axis angle (same as used for rendering axes)
+    const angle = (axisIndex * 2 * Math.PI) / sortedAxes.length - Math.PI / 3;
+
+    // Fixed center point (matches axis rendering)
+    const centerX = 325; // Center of 650px circle
+    const centerY = 325;
+
+    // Calculate distance from center based on the value
+    // Value ranges from -1 (left edge) to 1 (right edge)
+    // maxDistance accounts for padding (same as in handleAxisClick: rect.width / 2 - 80)
+    // For 650px container: (650 / 2) - 80 = 325 - 80 = 245
+    const maxDistance = 245;
+
+    // Map value to distance: -1 -> maxDistance (left), 0 -> 0 (center), 1 -> maxDistance (right)
+    // Use absolute value for distance, and sign for direction
+    const distanceFromCenter = Math.abs(feedbackData.value) * maxDistance;
+    const direction = feedbackData.value >= 0 ? 1 : -1;
+
+    // Project position onto the axis line
+    // For positive values: go in the direction of the angle (right side)
+    // For negative values: go opposite to the angle (left side)
+    const markerX = centerX + Math.cos(angle) * distanceFromCenter * direction;
+    const markerY = centerY + Math.sin(angle) * distanceFromCenter * direction;
+
+    return { x: markerX, y: markerY };
   };
 
   const getLabelDescription = (axisName: string, side: "left" | "right") => {
@@ -241,8 +289,12 @@ const CircularFeedback: React.FC<CircularFeedbackProps> = ({
         >
           <div className="center-point"></div>
 
-          {axes.map((axis, index) => {
-            const angle = (index * 2 * Math.PI) / axes.length - Math.PI / 2;
+          {sortedAxes.map((axis, index) => {
+            // Start at 1 o'clock position (30 degrees clockwise from top)
+            // -Math.PI/2 is 12 o'clock
+            // For 1pm (-60°), we use: -Math.PI/2 + Math.PI/6 = -Math.PI/3
+            const angle =
+              (index * 2 * Math.PI) / sortedAxes.length - Math.PI / 3;
             const markerPosition = getMarkerPosition(axis.name);
 
             // Calculate label positions - use perpendicular offset from axis
@@ -308,17 +360,19 @@ const CircularFeedback: React.FC<CircularFeedbackProps> = ({
                   onMouseEnter={() => setHoveredLabel(`${axis.name}-left`)}
                   onMouseLeave={() => setHoveredLabel(null)}
                 >
-                  {axis.left_label.split("\n").map((line, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        fontWeight: idx === 0 ? "bold" : "normal",
-                        fontSize: idx === 0 ? "13px" : "11px",
-                      }}
-                    >
-                      {line}
-                    </div>
-                  ))}
+                  {axis.left_label
+                    .split("\n")
+                    .map((line: string, idx: number) => (
+                      <div
+                        key={idx}
+                        style={{
+                          fontWeight: idx === 0 ? "bold" : "normal",
+                          fontSize: idx === 0 ? "13px" : "11px",
+                        }}
+                      >
+                        {line}
+                      </div>
+                    ))}
                 </div>
 
                 {/* Blue label (always on right side) */}
@@ -335,17 +389,19 @@ const CircularFeedback: React.FC<CircularFeedbackProps> = ({
                   onMouseEnter={() => setHoveredLabel(`${axis.name}-right`)}
                   onMouseLeave={() => setHoveredLabel(null)}
                 >
-                  {axis.right_label.split("\n").map((line, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        fontWeight: idx === 0 ? "bold" : "normal",
-                        fontSize: idx === 0 ? "13px" : "11px",
-                      }}
-                    >
-                      {line}
-                    </div>
-                  ))}
+                  {axis.right_label
+                    .split("\n")
+                    .map((line: string, idx: number) => (
+                      <div
+                        key={idx}
+                        style={{
+                          fontWeight: idx === 0 ? "bold" : "normal",
+                          fontSize: idx === 0 ? "13px" : "11px",
+                        }}
+                      >
+                        {line}
+                      </div>
+                    ))}
                 </div>
               </div>
             );
@@ -394,7 +450,7 @@ const CircularFeedback: React.FC<CircularFeedbackProps> = ({
               Your Feedback:
             </h3>
             {Object.entries(feedback).map(([axisName, data]) => {
-              const axis = axes.find((a) => a.name === axisName);
+              const axis = sortedAxes.find((a) => a.name === axisName);
               const label =
                 data.value > 0 ? axis?.right_label : axis?.left_label;
               return (

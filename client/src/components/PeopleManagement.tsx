@@ -103,24 +103,41 @@ const PeopleManagement: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      console.log("Fetching people...");
       const response = await fetch("/api/people", {
         headers: getAuthHeaders(),
       });
 
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+
       if (!response.ok) {
         if (response.status === 401) {
+          console.error("Authentication failed - logging out");
           handleLogout();
           throw new Error("Authentication required");
         }
-        const errorData = await safeJsonParse(response).catch(() => ({
-          error: "Failed to fetch people",
-        }));
-        throw new Error(errorData.error || "Failed to fetch people");
+        const responseText = await response.text();
+        console.error("Error response text:", responseText);
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch {
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        console.error("Error data:", errorData);
+        throw new Error(errorData.error || `Failed to fetch people (Status: ${response.status})`);
       }
       const data = await safeJsonParse(response);
+      console.log("Fetched people data:", data);
       setPeople(data);
     } catch (err: any) {
       console.error("Error fetching people:", err);
+      console.error("Error details:", {
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+      });
       setError(err.message || "Failed to fetch people");
     } finally {
       setLoading(false);

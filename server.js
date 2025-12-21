@@ -160,6 +160,25 @@ db.serialize(() => {
 // Admin login endpoint
 app.post("/api/admin/login", adminLogin);
 
+// Helper function to convert axis name to column name (based on label)
+// Maps axis.name to label-based column name with dashes
+const axisNameToColumnName = (axisName) => {
+  const mapping = {
+    feedback_style: "positive-fbck",
+    risk_style: "pro-motion",
+    communication_mode: "listening",
+    behavior_style: "adaptive",
+    management_style: "macro-mgmt",
+    approach_style: "care",
+    planning_style: "visioneering",
+    influencing_style: "asking",
+    interaction_style: "1on1",
+    prioritising: "chaos",
+    communication_style: "synchronous",
+  };
+  return mapping[axisName] || axisName;
+};
+
 // Sync feedback to admin database with person information
 // New structure: one row per feedback submission with all axes as columns
 // feedbackValues is an object with axis names as keys and values as numbers
@@ -181,13 +200,13 @@ const syncToAdminDb = (
         return;
       }
 
-      // Build the column names and values for all axes
-      const axisColumns = Object.keys(feedbackValues);
+      // Convert axis names to column names (label-based)
+      const axisColumns = Object.keys(feedbackValues).map(axisNameToColumnName);
       const axisValues = Object.values(feedbackValues);
 
       if (existingRecord) {
         // Update existing record with all axis values
-        const setClauses = axisColumns.map((col) => `${col} = ?`).join(", ");
+        const setClauses = axisColumns.map((col) => `"${col}" = ?`).join(", ");
         const updateQuery = `
           UPDATE admin_feedback_results 
           SET ${setClauses}, submission_date = CURRENT_TIMESTAMP 
@@ -199,6 +218,21 @@ const syncToAdminDb = (
           (err) => {
             if (err) {
               console.error("Error updating admin record:", err);
+              console.error("Update query:", updateQuery);
+              console.error("Values:", [
+                ...axisValues,
+                personId,
+                evaluatorName,
+                source,
+              ]);
+              console.error("Axis columns:", axisColumns);
+            } else {
+              console.log(
+                "Successfully updated admin record for:",
+                personName,
+                evaluatorName,
+                source
+              );
             }
           }
         );
@@ -210,7 +244,7 @@ const syncToAdminDb = (
           "person_giving_name",
           "person_giving_email",
           "feedback_source",
-          ...axisColumns,
+          ...axisColumns.map((col) => `"${col}"`),
         ];
         const placeholders = columns.map(() => "?").join(", ");
         const insertQuery = `
@@ -231,6 +265,24 @@ const syncToAdminDb = (
           (err) => {
             if (err) {
               console.error("Error inserting admin record:", err);
+              console.error("Insert query:", insertQuery);
+              console.error("Columns:", columns);
+              console.error("Values:", [
+                personId,
+                personName,
+                evaluatorName,
+                evaluatorEmail || null,
+                source,
+                ...axisValues,
+              ]);
+              console.error("Axis columns:", axisColumns);
+            } else {
+              console.log(
+                "Successfully inserted admin record for:",
+                personName,
+                evaluatorName,
+                source
+              );
             }
           }
         );
@@ -242,19 +294,42 @@ const syncToAdminDb = (
 // Get all feedback axes
 app.get("/api/axes", (req, res) => {
   // Use admin database for axes (where the updated axes are stored)
-  adminDb.all("SELECT * FROM feedback_axes ORDER BY id", (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
+  // Order: Blue labels (right_label) from top clockwise: POSITIVE Fbck, PRO-MOTION, LISTENING, ADAPTIVE, MACRO-MGMT, CARE, VISIONEERING, ASKING, 1o1, CHAOS, SYNCHRONOUS
+  const axisOrder = [
+    "feedback_style",
+    "risk_style",
+    "communication_mode",
+    "behavior_style",
+    "management_style",
+    "approach_style",
+    "planning_style",
+    "influencing_style",
+    "interaction_style",
+    "prioritising",
+    "communication_style",
+  ];
+
+  adminDb.all(
+    "SELECT * FROM feedback_axes ORDER BY CAST(id AS INTEGER)",
+    (err, rows) => {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      // Convert escaped newlines (\n) to actual newlines
+      const processedRows = rows.map((row) => ({
+        ...row,
+        left_label: row.left_label.replace(/\\n/g, "\n"),
+        right_label: row.right_label.replace(/\\n/g, "\n"),
+      }));
+
+      // Sort by ID numerically to ensure correct order
+      processedRows.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+
+      // Axes are now sorted by ID (which determines the visual order: 1=POSITIVE Fbck, 2=PRO-MOTION, etc.)
+      res.json(processedRows);
     }
-    // Convert escaped newlines (\n) to actual newlines
-    const processedRows = rows.map((row) => ({
-      ...row,
-      left_label: row.left_label.replace(/\\n/g, "\n"),
-      right_label: row.right_label.replace(/\\n/g, "\n"),
-    }));
-    res.json(processedRows);
-  });
+  );
 });
 
 // Get all feedback sources
@@ -649,6 +724,21 @@ app.post("/api/feedback", (req, res) => {
 
 // Get feedback statistics
 app.get("/api/stats", (req, res) => {
+  // Order: Blue labels (right_label) from top clockwise: POSITIVE Fbck, PRO-MOTION, LISTENING, ADAPTIVE, MACRO-MGMT, CARE, VISIONEERING, ASKING, 1o1, CHAOS, SYNCHRONOUS
+  const axisOrder = [
+    "feedback_style",
+    "risk_style",
+    "communication_mode",
+    "behavior_style",
+    "management_style",
+    "approach_style",
+    "planning_style",
+    "influencing_style",
+    "interaction_style",
+    "prioritising",
+    "communication_style",
+  ];
+
   const query = `
     SELECT 
       fa.name as axis_name,
@@ -661,7 +751,6 @@ app.get("/api/stats", (req, res) => {
     FROM feedback_axes fa
     LEFT JOIN feedback_responses fr ON fa.id = fr.axis_id
     GROUP BY fa.id, fa.name, fa.left_label, fa.right_label
-    ORDER BY fa.id
   `;
 
   db.all(query, (err, rows) => {
@@ -669,7 +758,19 @@ app.get("/api/stats", (req, res) => {
       res.status(500).json({ error: err.message });
       return;
     }
-    res.json(rows);
+
+    // Sort axes according to desired order
+    const sortedRows = rows.sort((a, b) => {
+      const indexA = axisOrder.indexOf(a.axis_name);
+      const indexB = axisOrder.indexOf(b.axis_name);
+      // If axis name not found in order array, put it at the end
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+
+    res.json(sortedRows);
   });
 });
 

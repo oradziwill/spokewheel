@@ -26,6 +26,7 @@ adminDb.serialize(() => {
   )`);
 
   // Comprehensive feedback results table with one column per axis
+  // Column names based on axis labels (right_label) in visual order: 8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6
   adminDb.run(`CREATE TABLE IF NOT EXISTS admin_feedback_results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     person_receiving_id INTEGER NOT NULL,
@@ -35,18 +36,18 @@ adminDb.serialize(() => {
     feedback_source TEXT NOT NULL CHECK(feedback_source IN ('self', 'peer', 'superior', 'inferior')),
     submission_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    -- One column for each axis
-    communication_style REAL,
-    prioritising REAL,
-    interaction_style REAL,
-    influencing_style REAL,
-    planning_style REAL,
-    approach_style REAL,
-    management_style REAL,
-    behavior_style REAL,
-    communication_mode REAL,
-    risk_style REAL,
-    feedback_style REAL,
+    -- One column for each axis in visual order (8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6): ASKING, CHAOS, POSITIVE-FBCK, LISTENING, MACRO-MGMT, VISIONEERING, 1ON1, SYNCHRONOUS, PRO-MOTION, ADAPTIVE, CARE
+    asking REAL,
+    chaos REAL,
+    "positive-fbck" REAL,
+    listening REAL,
+    "macro-mgmt" REAL,
+    visioneering REAL,
+    "1on1" REAL,
+    synchronous REAL,
+    "pro-motion" REAL,
+    adaptive REAL,
+    care REAL,
     FOREIGN KEY (person_receiving_id) REFERENCES people (id)
   )`);
 
@@ -126,18 +127,19 @@ adminDb.serialize(() => {
   )`);
 
   // Insert default axes into admin database
+  // Order: Blue labels (right_label) from top clockwise: POSITIVE Fbck, PRO-MOTION, LISTENING, ADAPTIVE, MACRO-MGMT, CARE, VISIONEERING, ASKING, 1o1, CHAOS, SYNCHRONOUS
   adminDb.run(`INSERT OR IGNORE INTO feedback_axes (id, name, left_label, right_label, created_at) VALUES 
-    (1, 'communication_style', 'ASYNCHRONOUS\ncommunication', 'SYNCHRONOUS\ncommunication', CURRENT_TIMESTAMP),
-    (2, 'prioritising', 'PRIORITISING\nhierarchical', 'CHAOS\nentropy', CURRENT_TIMESTAMP),
-    (3, 'interaction_style', '1onGROUPS\ndominant interaction', '1on1\ndominant interaction', CURRENT_TIMESTAMP),
-    (4, 'influencing_style', 'TELLING\ninfluencing by statements', 'ASKING\ninfluencing by questioning', CURRENT_TIMESTAMP),
-    (5, 'planning_style', 'STRATEGISING\nanalysing/planning', 'VISIONEERING\npicturing the future', CURRENT_TIMESTAMP),
+    (1, 'feedback_style', 'NEGATIVE FBCK\ncriticism', 'POSITIVE FBCK\nPraise', CURRENT_TIMESTAMP),
+    (2, 'risk_style', 'PREVENTION\nminimising risk/uncertainty', 'PRO-MOTION\nseeking/pursuing opportunities', CURRENT_TIMESTAMP),
+    (3, 'communication_mode', 'EXPRESSING\nprevailing behaviour', 'LISTENING\nprevailing behaviour', CURRENT_TIMESTAMP),
+    (4, 'behavior_style', 'PUSHING\nprevailing behaviour', 'ADAPTIVE\nto others', CURRENT_TIMESTAMP),
+    (5, 'management_style', 'MICRO-MGMT\nhands-on', 'MACRO-MGMT\nhands-off', CURRENT_TIMESTAMP),
     (6, 'approach_style', 'CHALLANGE\nothers', 'CARE\nempathy', CURRENT_TIMESTAMP),
-    (7, 'management_style', 'MICRO-MGMT\nhands-on', 'MACRO-MGMT\nhands-off', CURRENT_TIMESTAMP),
-    (8, 'behavior_style', 'PUSHING\nprevailing behaviour', 'ADAPTIVE\nto others', CURRENT_TIMESTAMP),
-    (9, 'communication_mode', 'EXPRESSING\nprevailing behaviour', 'LISTENING\nprevailing behaviour', CURRENT_TIMESTAMP),
-    (10, 'risk_style', 'PREVENTION\nminimising risk/uncertainty', 'PRO-MOTION\nseeking/pursuing opportunities', CURRENT_TIMESTAMP),
-    (11, 'feedback_style', 'NEGATIVE FBCK\ncriticism', 'POSITIVE FBCK\nPraise', CURRENT_TIMESTAMP)
+    (7, 'planning_style', 'STRATEGISING\nanalysing/planning', 'VISIONEERING\npicturing the future', CURRENT_TIMESTAMP),
+    (8, 'influencing_style', 'TELLING\ninfluencing by statements', 'ASKING\ninfluencing by questioning', CURRENT_TIMESTAMP),
+    (9, 'interaction_style', '1onGROUPS\ndominant interaction', '1on1\ndominant interaction', CURRENT_TIMESTAMP),
+    (10, 'prioritising', 'PRIORITISING\nhierarchical', 'CHAOS\nentropy', CURRENT_TIMESTAMP),
+    (11, 'communication_style', 'ASYNCHRONOUS\ncommunication', 'SYNCHRONOUS\ncommunication', CURRENT_TIMESTAMP)
   `);
 
   // Insert default admin user (password: admin123)

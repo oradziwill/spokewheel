@@ -283,6 +283,7 @@ const initializeTables = () => {
     )`,
 
     // Admin feedback results table
+    // Column names based on axis labels (right_label) in visual order: 8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6
     `CREATE TABLE IF NOT EXISTS admin_feedback_results (
       id SERIAL PRIMARY KEY,
       person_receiving_id INTEGER NOT NULL,
@@ -292,18 +293,18 @@ const initializeTables = () => {
       feedback_source TEXT NOT NULL CHECK(feedback_source IN ('self', 'peer', 'superior', 'inferior')),
       submission_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      -- One column for each axis
-      communication_style DOUBLE PRECISION,
-      prioritising DOUBLE PRECISION,
-      interaction_style DOUBLE PRECISION,
-      influencing_style DOUBLE PRECISION,
-      planning_style DOUBLE PRECISION,
-      approach_style DOUBLE PRECISION,
-      management_style DOUBLE PRECISION,
-      behavior_style DOUBLE PRECISION,
-      communication_mode DOUBLE PRECISION,
-      risk_style DOUBLE PRECISION,
-      feedback_style DOUBLE PRECISION,
+      -- One column for each axis in visual order (8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6): ASKING, CHAOS, POSITIVE-FBCK, LISTENING, MACRO-MGMT, VISIONEERING, 1ON1, SYNCHRONOUS, PRO-MOTION, ADAPTIVE, CARE
+      asking DOUBLE PRECISION,
+      chaos DOUBLE PRECISION,
+      "positive-fbck" DOUBLE PRECISION,
+      listening DOUBLE PRECISION,
+      "macro-mgmt" DOUBLE PRECISION,
+      visioneering DOUBLE PRECISION,
+      "1on1" DOUBLE PRECISION,
+      synchronous DOUBLE PRECISION,
+      "pro-motion" DOUBLE PRECISION,
+      adaptive DOUBLE PRECISION,
+      care DOUBLE PRECISION,
       FOREIGN KEY (person_receiving_id) REFERENCES people (id) ON DELETE CASCADE
     )`,
 
@@ -350,20 +351,21 @@ const initializeTables = () => {
 
 const insertDefaultData = () => {
   // Insert default axes
+  // Order: Blue labels (right_label) from top clockwise: POSITIVE Fbck, PRO-MOTION, LISTENING, ADAPTIVE, MACRO-MGMT, CARE, VISIONEERING, ASKING, 1o1, CHAOS, SYNCHRONOUS
   pool.query(
     `INSERT INTO feedback_axes (id, name, left_label, right_label, created_at) 
      VALUES 
-       (1, 'communication_style', 'ASYNCHRONOUS' || E'\\n' || 'communication', 'SYNCHRONOUS' || E'\\n' || 'communication', CURRENT_TIMESTAMP),
-       (2, 'prioritising', 'PRIORITISING' || E'\\n' || 'hierarchical', 'CHAOS' || E'\\n' || 'entropy', CURRENT_TIMESTAMP),
-       (3, 'interaction_style', '1onGROUPS' || E'\\n' || 'dominant interaction', '1on1' || E'\\n' || 'dominant interaction', CURRENT_TIMESTAMP),
-       (4, 'influencing_style', 'TELLING' || E'\\n' || 'influencing by statements', 'ASKING' || E'\\n' || 'influencing by questioning', CURRENT_TIMESTAMP),
-       (5, 'planning_style', 'STRATEGISING' || E'\\n' || 'analysing/planning', 'VISIONEERING' || E'\\n' || 'picturing the future', CURRENT_TIMESTAMP),
+       (1, 'feedback_style', 'NEGATIVE FBCK' || E'\\n' || 'criticism', 'POSITIVE FBCK' || E'\\n' || 'Praise', CURRENT_TIMESTAMP),
+       (2, 'risk_style', 'PREVENTION' || E'\\n' || 'minimising risk/uncertainty', 'PRO-MOTION' || E'\\n' || 'seeking/pursuing opportunities', CURRENT_TIMESTAMP),
+       (3, 'communication_mode', 'EXPRESSING' || E'\\n' || 'prevailing behaviour', 'LISTENING' || E'\\n' || 'prevailing behaviour', CURRENT_TIMESTAMP),
+       (4, 'behavior_style', 'PUSHING' || E'\\n' || 'prevailing behaviour', 'ADAPTIVE' || E'\\n' || 'to others', CURRENT_TIMESTAMP),
+       (5, 'management_style', 'MICRO-MGMT' || E'\\n' || 'hands-on', 'MACRO-MGMT' || E'\\n' || 'hands-off', CURRENT_TIMESTAMP),
        (6, 'approach_style', 'CHALLANGE' || E'\\n' || 'others', 'CARE' || E'\\n' || 'empathy', CURRENT_TIMESTAMP),
-       (7, 'management_style', 'MICRO-MGMT' || E'\\n' || 'hands-on', 'MACRO-MGMT' || E'\\n' || 'hands-off', CURRENT_TIMESTAMP),
-       (8, 'behavior_style', 'PUSHING' || E'\\n' || 'prevailing behaviour', 'ADAPTIVE' || E'\\n' || 'to others', CURRENT_TIMESTAMP),
-       (9, 'communication_mode', 'EXPRESSING' || E'\\n' || 'prevailing behaviour', 'LISTENING' || E'\\n' || 'prevailing behaviour', CURRENT_TIMESTAMP),
-       (10, 'risk_style', 'PREVENTION' || E'\\n' || 'minimising risk/uncertainty', 'PRO-MOTION' || E'\\n' || 'seeking/pursuing opportunities', CURRENT_TIMESTAMP),
-       (11, 'feedback_style', 'NEGATIVE FBCK' || E'\\n' || 'criticism', 'POSITIVE FBCK' || E'\\n' || 'Praise', CURRENT_TIMESTAMP)
+       (7, 'planning_style', 'STRATEGISING' || E'\\n' || 'analysing/planning', 'VISIONEERING' || E'\\n' || 'picturing the future', CURRENT_TIMESTAMP),
+       (8, 'influencing_style', 'TELLING' || E'\\n' || 'influencing by statements', 'ASKING' || E'\\n' || 'influencing by questioning', CURRENT_TIMESTAMP),
+       (9, 'interaction_style', '1onGROUPS' || E'\\n' || 'dominant interaction', '1on1' || E'\\n' || 'dominant interaction', CURRENT_TIMESTAMP),
+       (10, 'prioritising', 'PRIORITISING' || E'\\n' || 'hierarchical', 'CHAOS' || E'\\n' || 'entropy', CURRENT_TIMESTAMP),
+       (11, 'communication_style', 'ASYNCHRONOUS' || E'\\n' || 'communication', 'SYNCHRONOUS' || E'\\n' || 'communication', CURRENT_TIMESTAMP)
      ON CONFLICT (id) DO NOTHING`,
     (err) => {
       if (err && !err.message.includes("duplicate")) {

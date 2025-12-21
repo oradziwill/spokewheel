@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 
 interface Axis {
   id: number;
@@ -41,6 +47,34 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const sortedAxes = useMemo(() => {
+    if (axes.length === 0) {
+      return [];
+    }
+    // Place axes in specific ID order: 8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6
+    const desiredIdOrder = [8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6];
+
+    // Create map by ID for easy lookup
+    const axesById = new Map<number, (typeof axes)[0]>();
+    axes.forEach((axis) => {
+      const id = parseInt(String(axis.id));
+      if (!axesById.has(id)) {
+        axesById.set(id, axis);
+      }
+    });
+
+    // Build array in desired ID order
+    const sorted: (typeof axes)[0][] = [];
+    for (const id of desiredIdOrder) {
+      const axis = axesById.get(id);
+      if (axis) {
+        sorted.push(axis);
+      }
+    }
+
+    return sorted;
+  }, [axes]);
+
   const safeJsonParse = async (response: Response) => {
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
@@ -79,7 +113,56 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
       if (axesResponse.ok && sourcesResponse.ok) {
         const axesData = await safeJsonParse(axesResponse);
         const sourcesData = await safeJsonParse(sourcesResponse);
-        setAxes(axesData);
+
+        // Sort axes by ID (database IDs determine the correct order)
+        // Database IDs: 1=POSITIVE Fbck, 2=PRO-MOTION, 3=LISTENING, 4=ADAPTIVE, 5=MACRO-MGMT, 6=CARE, 7=VISIONEERING, 8=ASKING, 9=1o1, 10=CHAOS, 11=SYNCHRONOUS
+        let sortedAxes = [...axesData].sort(
+          (a: Axis, b: Axis) => parseInt(String(a.id)) - parseInt(String(b.id))
+        );
+
+        // Rotate array to get POSITIVE Fbck at position 0 (top right)
+        // Analysis: Current visual order has POSITIVE Fbck at position 8 (index 7)
+        // Need to rotate LEFT by 7 positions to move index 7 to index 0
+        const positiveFbckIndex = sortedAxes.findIndex(
+          (a) =>
+            a.right_label?.includes("POSITIVE") ||
+            a.right_label?.includes("POSITIVE FBCK")
+        );
+        if (positiveFbckIndex >= 0 && positiveFbckIndex !== 0) {
+          // Rotate LEFT: move elements from positiveFbckIndex to the front
+          // Example: if index 7, rotate LEFT by 7: [7,8,9,10,0,1,2,3,4,5,6]
+          sortedAxes = [
+            ...sortedAxes.slice(positiveFbckIndex),
+            ...sortedAxes.slice(0, positiveFbckIndex),
+          ];
+        }
+
+        // Verify the order before setting
+        const firstAxisRightLabel = sortedAxes[0]?.right_label?.split("\n")[0];
+        if (firstAxisRightLabel && !firstAxisRightLabel.includes("POSITIVE")) {
+          console.warn(
+            "⚠️ WARNING: First axis label is",
+            firstAxisRightLabel,
+            "expected POSITIVE Fbck"
+          );
+          console.warn(
+            "Full axes order:",
+            sortedAxes
+              .map(
+                (a, i) =>
+                  `${i + 1}. ID ${a.id}: ${a.right_label?.split("\n")[0]} (${
+                    a.name
+                  })`
+              )
+              .join(", ")
+          );
+        } else {
+          console.log(
+            "✅ Axes correctly sorted by ID. First:",
+            firstAxisRightLabel
+          );
+        }
+        setAxes(sortedAxes);
         setSources(sourcesData);
       }
     } catch (error) {
@@ -140,10 +223,35 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
     const data = feedback[axisName];
     if (!data) return null;
 
-    return {
-      x: data.clickX,
-      y: data.clickY,
-    };
+    // Find the axis index to get its angle
+    const axisIndex = sortedAxes.findIndex((axis) => axis.name === axisName);
+    if (axisIndex === -1) return null;
+
+    // Calculate the axis angle (same as used for rendering axes)
+    const angle = (axisIndex * 2 * Math.PI) / sortedAxes.length - Math.PI / 3;
+
+    // Fixed center point (matches axis rendering)
+    const centerX = 325; // Center of 650px circle
+    const centerY = 325;
+
+    // Calculate distance from center based on the value
+    // Value ranges from -1 (left edge) to 1 (right edge)
+    // maxDistance accounts for padding (same as in handleAxisClick: rect.width / 2 - 80)
+    // For 650px container: (650 / 2) - 80 = 325 - 80 = 245
+    const maxDistance = 245;
+
+    // Map value to distance: -1 -> maxDistance (left), 0 -> 0 (center), 1 -> maxDistance (right)
+    // Use absolute value for distance, and sign for direction
+    const distanceFromCenter = Math.abs(data.value) * maxDistance;
+    const direction = data.value >= 0 ? 1 : -1;
+
+    // Project position onto the axis line
+    // For positive values: go in the direction of the angle (right side)
+    // For negative values: go opposite to the angle (left side)
+    const markerX = centerX + Math.cos(angle) * distanceFromCenter * direction;
+    const markerY = centerY + Math.sin(angle) * distanceFromCenter * direction;
+
+    return { x: markerX, y: markerY };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -370,8 +478,20 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
           ref={containerRef}
           style={{ marginTop: "80px" }}
         >
-          {axes.map((axis, index) => {
-            const angle = (index * 2 * Math.PI) / axes.length - Math.PI / 2;
+          {sortedAxes.map((axis, index) => {
+            // Start at 1 o'clock position (30 degrees clockwise from top)
+            // -Math.PI/2 is 12 o'clock
+            // For 1pm (-60°), we use: -Math.PI/2 + Math.PI/6 = -Math.PI/3
+            // The array is already rotated in useMemo, so we use index directly
+            const angle =
+              (index * 2 * Math.PI) / sortedAxes.length - Math.PI / 3;
+
+            // Debug: log ALL axes being rendered
+            console.log(
+              `🔵 Rendering index ${index}: ${axis.name} = "${
+                axis.right_label.split("\n")[0]
+              }" at angle ${((angle * 180) / Math.PI).toFixed(1)}°`
+            );
 
             // Calculate label positions - use perpendicular offset from axis
             const centerX = 325; // Center of 650px circle
@@ -435,17 +555,19 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
                   onMouseEnter={() => setHoveredLabel(`${axis.name}-left`)}
                   onMouseLeave={() => setHoveredLabel(null)}
                 >
-                  {axis.left_label.split("\n").map((line, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        fontWeight: idx === 0 ? "bold" : "normal",
-                        fontSize: idx === 0 ? "13px" : "11px",
-                      }}
-                    >
-                      {line}
-                    </div>
-                  ))}
+                  {axis.left_label
+                    .split("\n")
+                    .map((line: string, idx: number) => (
+                      <div
+                        key={idx}
+                        style={{
+                          fontWeight: idx === 0 ? "bold" : "normal",
+                          fontSize: idx === 0 ? "13px" : "11px",
+                        }}
+                      >
+                        {line}
+                      </div>
+                    ))}
                 </div>
 
                 {/* Blue label (always on right side) */}
@@ -462,17 +584,19 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
                   onMouseEnter={() => setHoveredLabel(`${axis.name}-right`)}
                   onMouseLeave={() => setHoveredLabel(null)}
                 >
-                  {axis.right_label.split("\n").map((line, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        fontWeight: idx === 0 ? "bold" : "normal",
-                        fontSize: idx === 0 ? "13px" : "11px",
-                      }}
-                    >
-                      {line}
-                    </div>
-                  ))}
+                  {axis.right_label
+                    .split("\n")
+                    .map((line: string, idx: number) => (
+                      <div
+                        key={idx}
+                        style={{
+                          fontWeight: idx === 0 ? "bold" : "normal",
+                          fontSize: idx === 0 ? "13px" : "11px",
+                        }}
+                      >
+                        {line}
+                      </div>
+                    ))}
                 </div>
               </div>
             );

@@ -4,26 +4,29 @@ const { authenticateAdmin } = require("./admin-auth");
 
 const router = express.Router();
 
-// Get all axis names
+// Get all axis column names (based on labels)
+// Order matches visual order: 8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6
+// Columns: ASKING, CHAOS, POSITIVE-FBCK, LISTENING, MACRO-MGMT, VISIONEERING, 1ON1, SYNCHRONOUS, PRO-MOTION, ADAPTIVE, CARE
 const getAxisNames = () => {
   return [
-    "communication_style",
-    "prioritising",
-    "interaction_style",
-    "influencing_style",
-    "planning_style",
-    "approach_style",
-    "management_style",
-    "behavior_style",
-    "communication_mode",
-    "risk_style",
-    "feedback_style",
+    "asking",
+    "chaos",
+    "positive-fbck",
+    "listening",
+    "macro-mgmt",
+    "visioneering",
+    "1on1",
+    "synchronous",
+    "pro-motion",
+    "adaptive",
+    "care",
   ];
 };
 
 // Get all feedback results (admin only)
 // Returns one row per feedback submission with all axis values as columns
 router.get("/feedback-results", authenticateAdmin, (req, res) => {
+  const axisColumns = getAxisNames().map(col => `"${col}"`).join(", ");
   const query = `
     SELECT 
       id,
@@ -33,23 +36,15 @@ router.get("/feedback-results", authenticateAdmin, (req, res) => {
       person_giving_email,
       feedback_source,
       submission_date,
-      communication_style,
-      prioritising,
-      interaction_style,
-      influencing_style,
-      planning_style,
-      approach_style,
-      management_style,
-      behavior_style,
-      communication_mode,
-      risk_style,
-      feedback_style
+      ${axisColumns}
     FROM admin_feedback_results
     ORDER BY submission_date DESC, person_receiving_name, person_giving_name
   `;
 
   adminDb.all(query, (err, rows) => {
     if (err) {
+      console.error("Error fetching feedback results:", err);
+      console.error("Query:", query);
       return res.status(500).json({ error: err.message });
     }
     res.json(rows);
@@ -79,15 +74,18 @@ const calculateStdDev = (values, mean) => {
 // Returns average, median, mean, std dev for each source and overall
 router.get("/feedback-summary", authenticateAdmin, (req, res) => {
   const axisNames = getAxisNames();
+  const axisColumns = axisNames.map(col => `"${col}"`).join(", ");
   const query = `
     SELECT 
       feedback_source,
-      ${axisNames.join(", ")}
+      ${axisColumns}
     FROM admin_feedback_results
   `;
 
   adminDb.all(query, (err, rows) => {
     if (err) {
+      console.error("Error fetching feedback summary:", err);
+      console.error("Query:", query);
       return res.status(500).json({ error: err.message });
     }
 
@@ -146,6 +144,7 @@ router.get(
   (req, res) => {
     const evaluatorName = req.params.evaluatorName;
 
+    const axisColumns = getAxisNames().map(col => `"${col}"`).join(", ");
     const query = `
       SELECT 
         id,
@@ -155,17 +154,7 @@ router.get(
         person_giving_email,
         feedback_source,
         submission_date,
-        communication_style,
-        prioritising,
-        interaction_style,
-        influencing_style,
-        planning_style,
-        approach_style,
-        management_style,
-        behavior_style,
-        communication_mode,
-        risk_style,
-        feedback_style
+        ${axisColumns}
       FROM admin_feedback_results
       WHERE person_giving_name = ?
       ORDER BY submission_date DESC
@@ -183,8 +172,8 @@ router.get(
 // Export feedback data (admin only)
 router.get("/export", authenticateAdmin, (req, res) => {
   const format = req.query.format || "json";
-  const axisNames = getAxisNames();
-  const axisColumns = axisNames.join(", ");
+      const axisNames = getAxisNames();
+      const axisColumns = axisNames.map(col => `"${col}"`).join(", ");
 
   if (format === "csv") {
     // Export as CSV

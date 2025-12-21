@@ -88,48 +88,85 @@ const authenticate = async (req, res, next) => {
 
 // Get all people (authenticated users see their own, admins see all)
 router.get("/people", authenticate, (req, res) => {
-  const isAdmin = req.user.role === "admin";
+  try {
+    const isAdmin = req.user.role === "admin";
+    console.log(
+      "Fetching people for user:",
+      req.user.username,
+      "role:",
+      req.user.role,
+      "isAdmin:",
+      isAdmin
+    );
 
-  // Build query based on user role
-  let query;
-  let params = [];
+    // Build query based on user role
+    let query;
+    let params = [];
 
-  if (isAdmin) {
-    // Admins see all people
-    query = `
-      SELECT 
-        p.*,
-        COUNT(fl.id) as active_links,
-        COALESCE(COUNT(fr.id), 0) as feedback_count
-      FROM people p
-      LEFT JOIN feedback_links fl ON p.id = fl.person_id AND fl.is_active = 1
-      LEFT JOIN admin_feedback_results fr ON p.id = fr.person_receiving_id
-      GROUP BY p.id
-      ORDER BY p.created_at DESC
-    `;
-  } else {
-    // Regular users see only their own people
-    query = `
-      SELECT 
-        p.*,
-        COUNT(fl.id) as active_links,
-        COALESCE(COUNT(fr.id), 0) as feedback_count
-      FROM people p
-      LEFT JOIN feedback_links fl ON p.id = fl.person_id AND fl.is_active = 1
-      LEFT JOIN admin_feedback_results fr ON p.id = fr.person_receiving_id
-      WHERE p.created_by_user_id = ?
-      GROUP BY p.id
-      ORDER BY p.created_at DESC
-    `;
-    params = [req.user.id];
-  }
-
-  adminDb.all(query, params, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
+    if (isAdmin) {
+      // Admins see all people
+      // PostgreSQL requires all non-aggregated columns in GROUP BY
+      query = `
+        SELECT 
+          p.id,
+          p.name,
+          p.email,
+          p.department,
+          p.position,
+          p.created_by_user_id,
+          p.created_at,
+          p.updated_at,
+          COUNT(DISTINCT fl.id) as active_links,
+          COUNT(DISTINCT fr.id) as feedback_count
+        FROM people p
+        LEFT JOIN feedback_links fl ON p.id = fl.person_id AND fl.is_active = 1
+        LEFT JOIN admin_feedback_results fr ON p.id = fr.person_receiving_id
+        GROUP BY p.id, p.name, p.email, p.department, p.position, p.created_by_user_id, p.created_at, p.updated_at
+        ORDER BY p.created_at DESC
+      `;
+    } else {
+      // Regular users see only their own people
+      query = `
+        SELECT 
+          p.id,
+          p.name,
+          p.email,
+          p.department,
+          p.position,
+          p.created_by_user_id,
+          p.created_at,
+          p.updated_at,
+          COUNT(DISTINCT fl.id) as active_links,
+          COUNT(DISTINCT fr.id) as feedback_count
+        FROM people p
+        LEFT JOIN feedback_links fl ON p.id = fl.person_id AND fl.is_active = 1
+        LEFT JOIN admin_feedback_results fr ON p.id = fr.person_receiving_id
+        WHERE p.created_by_user_id = ?
+        GROUP BY p.id, p.name, p.email, p.department, p.position, p.created_by_user_id, p.created_at, p.updated_at
+        ORDER BY p.created_at DESC
+      `;
+      params = [req.user.id];
     }
-    res.json(rows);
-  });
+
+    console.log("Executing query:", query);
+    console.log("With params:", params);
+
+    adminDb.all(query, params, (err, rows) => {
+      if (err) {
+        console.error("Error fetching people:", err);
+        console.error("Error message:", err.message);
+        console.error("Error stack:", err.stack);
+        console.error("Query:", query);
+        console.error("Params:", params);
+        return res.status(500).json({ error: err.message || "Database error" });
+      }
+      console.log("Successfully fetched", rows.length, "people");
+      res.json(rows);
+    });
+  } catch (error) {
+    console.error("Unexpected error in /people endpoint:", error);
+    res.status(500).json({ error: error.message || "Internal server error" });
+  }
 });
 
 // Create a new person (authenticated users can create)

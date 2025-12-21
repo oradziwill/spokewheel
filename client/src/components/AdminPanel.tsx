@@ -8,18 +8,18 @@ interface AdminFeedbackResult {
   person_giving_email: string | null;
   feedback_source: string;
   submission_date: string;
-  // One column for each axis
-  communication_style: number | null;
-  prioritising: number | null;
-  interaction_style: number | null;
-  influencing_style: number | null;
-  planning_style: number | null;
-  approach_style: number | null;
-  management_style: number | null;
-  behavior_style: number | null;
-  communication_mode: number | null;
-  risk_style: number | null;
-  feedback_style: number | null;
+  // One column for each axis (in visual order: 8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6)
+  asking: number | null;
+  chaos: number | null;
+  "positive-fbck": number | null;
+  listening: number | null;
+  "macro-mgmt": number | null;
+  visioneering: number | null;
+  "1on1": number | null;
+  synchronous: number | null;
+  "pro-motion": number | null;
+  adaptive: number | null;
+  care: number | null;
 }
 
 interface AdminSummary {
@@ -133,21 +133,31 @@ const AdminPanel: React.FC = () => {
       } else {
         console.error(
           "Failed to fetch:",
-          resultsResponse.status,
-          summaryResponse.status
+          "Results:", resultsResponse.status,
+          "Summary:", summaryResponse.status
         );
-        const resultsText = await resultsResponse.text();
-        const summaryText = await summaryResponse.text();
-        console.error("Results response:", resultsText);
-        console.error("Summary response:", summaryText);
-        try {
-          const errorData = await safeJsonParse(resultsResponse);
-          setError(errorData.error || "Failed to fetch admin data");
-        } catch {
-          setError(
-            `Failed to fetch admin data. Status: ${resultsResponse.status}`
-          );
+        
+        let errorMessage = "Failed to fetch admin data";
+        if (!resultsResponse.ok) {
+          try {
+            const resultsText = await resultsResponse.text();
+            console.error("Results response:", resultsText);
+            const errorData = JSON.parse(resultsText);
+            errorMessage = `Feedback Results: ${errorData.error || resultsResponse.statusText}`;
+          } catch {
+            errorMessage = `Feedback Results: Status ${resultsResponse.status}`;
+          }
+        } else if (!summaryResponse.ok) {
+          try {
+            const summaryText = await summaryResponse.text();
+            console.error("Summary response:", summaryText);
+            const errorData = JSON.parse(summaryText);
+            errorMessage = `Feedback Summary: ${errorData.error || summaryResponse.statusText}`;
+          } catch {
+            errorMessage = `Feedback Summary: Status ${summaryResponse.status}`;
+          }
         }
+        setError(errorMessage);
       }
     } catch (err) {
       setError("Failed to fetch admin data");
@@ -328,9 +338,26 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <h3>Detailed Feedback Results</h3>
-          <p style={{ color: "#666", fontSize: "14px" }}>
-            Total: {feedbackResults.length} feedback entries
-          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+            <p style={{ color: "#666", fontSize: "14px" }}>
+              Total: {feedbackResults.length} feedback entries
+            </p>
+            <button
+              onClick={fetchAdminData}
+              disabled={loading}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: loading ? "not-allowed" : "pointer",
+                fontSize: "14px",
+              }}
+            >
+              {loading ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
         </div>
         {loading && (
           <div style={{ textAlign: "center", padding: "20px" }}>
@@ -346,17 +373,17 @@ const AdminPanel: React.FC = () => {
                   <th>Person Giving Feedback</th>
                   <th>Feedback Source</th>
                   <th>Date</th>
-                  <th>Communication Style</th>
-                  <th>Prioritising</th>
-                  <th>Interaction Style</th>
-                  <th>Influencing Style</th>
-                  <th>Planning Style</th>
-                  <th>Approach Style</th>
-                  <th>Management Style</th>
-                  <th>Behavior Style</th>
-                  <th>Communication Mode</th>
-                  <th>Risk Style</th>
-                  <th>Feedback Style</th>
+                  <th>Asking</th>
+                  <th>Chaos</th>
+                  <th>Positive Fbck</th>
+                  <th>Listening</th>
+                  <th>Macro-Mgmt</th>
+                  <th>Visioneering</th>
+                  <th>1on1</th>
+                  <th>Synchronous</th>
+                  <th>Pro-Motion</th>
+                  <th>Adaptive</th>
+                  <th>Care</th>
                 </tr>
               </thead>
               <tbody>
@@ -385,17 +412,17 @@ const AdminPanel: React.FC = () => {
                       <td>
                         {new Date(result.submission_date).toLocaleDateString()}
                       </td>
-                      <td>{result.communication_style?.toFixed(2) || "-"}</td>
-                      <td>{result.prioritising?.toFixed(2) || "-"}</td>
-                      <td>{result.interaction_style?.toFixed(2) || "-"}</td>
-                      <td>{result.influencing_style?.toFixed(2) || "-"}</td>
-                      <td>{result.planning_style?.toFixed(2) || "-"}</td>
-                      <td>{result.approach_style?.toFixed(2) || "-"}</td>
-                      <td>{result.management_style?.toFixed(2) || "-"}</td>
-                      <td>{result.behavior_style?.toFixed(2) || "-"}</td>
-                      <td>{result.communication_mode?.toFixed(2) || "-"}</td>
-                      <td>{result.risk_style?.toFixed(2) || "-"}</td>
-                      <td>{result.feedback_style?.toFixed(2) || "-"}</td>
+                      <td>{result.asking?.toFixed(2) || "-"}</td>
+                      <td>{result.chaos?.toFixed(2) || "-"}</td>
+                      <td>{result["positive-fbck"]?.toFixed(2) || "-"}</td>
+                      <td>{result.listening?.toFixed(2) || "-"}</td>
+                      <td>{result["macro-mgmt"]?.toFixed(2) || "-"}</td>
+                      <td>{result.visioneering?.toFixed(2) || "-"}</td>
+                      <td>{result["1on1"]?.toFixed(2) || "-"}</td>
+                      <td>{result.synchronous?.toFixed(2) || "-"}</td>
+                      <td>{result["pro-motion"]?.toFixed(2) || "-"}</td>
+                      <td>{result.adaptive?.toFixed(2) || "-"}</td>
+                      <td>{result.care?.toFixed(2) || "-"}</td>
                     </tr>
                   ))
                 )}

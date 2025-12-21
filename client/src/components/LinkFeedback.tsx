@@ -114,55 +114,9 @@ const LinkFeedback: React.FC<LinkFeedbackProps> = ({ token }) => {
         const axesData = await safeJsonParse(axesResponse);
         const sourcesData = await safeJsonParse(sourcesResponse);
 
-        // Sort axes by ID (database IDs determine the correct order)
-        // Database IDs: 1=POSITIVE Fbck, 2=PRO-MOTION, 3=LISTENING, 4=ADAPTIVE, 5=MACRO-MGMT, 6=CARE, 7=VISIONEERING, 8=ASKING, 9=1o1, 10=CHAOS, 11=SYNCHRONOUS
-        let sortedAxes = [...axesData].sort(
-          (a: Axis, b: Axis) => parseInt(String(a.id)) - parseInt(String(b.id))
-        );
-
-        // Rotate array to get POSITIVE Fbck at position 0 (top right)
-        // Analysis: Current visual order has POSITIVE Fbck at position 8 (index 7)
-        // Need to rotate LEFT by 7 positions to move index 7 to index 0
-        const positiveFbckIndex = sortedAxes.findIndex(
-          (a) =>
-            a.right_label?.includes("POSITIVE") ||
-            a.right_label?.includes("POSITIVE FBCK")
-        );
-        if (positiveFbckIndex >= 0 && positiveFbckIndex !== 0) {
-          // Rotate LEFT: move elements from positiveFbckIndex to the front
-          // Example: if index 7, rotate LEFT by 7: [7,8,9,10,0,1,2,3,4,5,6]
-          sortedAxes = [
-            ...sortedAxes.slice(positiveFbckIndex),
-            ...sortedAxes.slice(0, positiveFbckIndex),
-          ];
-        }
-
-        // Verify the order before setting
-        const firstAxisRightLabel = sortedAxes[0]?.right_label?.split("\n")[0];
-        if (firstAxisRightLabel && !firstAxisRightLabel.includes("POSITIVE")) {
-          console.warn(
-            "⚠️ WARNING: First axis label is",
-            firstAxisRightLabel,
-            "expected POSITIVE Fbck"
-          );
-          console.warn(
-            "Full axes order:",
-            sortedAxes
-              .map(
-                (a, i) =>
-                  `${i + 1}. ID ${a.id}: ${a.right_label?.split("\n")[0]} (${
-                    a.name
-                  })`
-              )
-              .join(", ")
-          );
-        } else {
-          console.log(
-            "✅ Axes correctly sorted by ID. First:",
-            firstAxisRightLabel
-          );
-        }
-        setAxes(sortedAxes);
+        // Don't sort here - let useMemo handle sorting with desiredIdOrder
+        // The useMemo hook will properly order axes: [8, 10, 1, 3, 5, 7, 9, 11, 2, 4, 6]
+        setAxes(axesData);
         setSources(sourcesData);
       }
     } catch (error) {

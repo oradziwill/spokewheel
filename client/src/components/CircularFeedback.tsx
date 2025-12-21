@@ -148,35 +148,8 @@ const CircularFeedback: React.FC<CircularFeedbackProps> = ({
     const feedbackData = feedback[axisName];
     if (!feedbackData) return null;
 
-    // Find the axis index to get its angle
-    const axisIndex = sortedAxes.findIndex((axis) => axis.name === axisName);
-    if (axisIndex === -1) return null;
-
-    // Calculate the axis angle (same as used for rendering axes)
-    const angle = (axisIndex * 2 * Math.PI) / sortedAxes.length - Math.PI / 3;
-
-    // Fixed center point (matches axis rendering)
-    const centerX = 325; // Center of 650px circle
-    const centerY = 325;
-
-    // Calculate distance from center based on the value
-    // Value ranges from -1 (left edge) to 1 (right edge)
-    // maxDistance accounts for padding (same as in handleAxisClick: rect.width / 2 - 80)
-    // For 650px container: (650 / 2) - 80 = 325 - 80 = 245
-    const maxDistance = 245;
-
-    // Map value to distance: -1 -> maxDistance (left), 0 -> 0 (center), 1 -> maxDistance (right)
-    // Use absolute value for distance, and sign for direction
-    const distanceFromCenter = Math.abs(feedbackData.value) * maxDistance;
-    const direction = feedbackData.value >= 0 ? 1 : -1;
-
-    // Project position onto the axis line
-    // For positive values: go in the direction of the angle (right side)
-    // For negative values: go opposite to the angle (left side)
-    const markerX = centerX + Math.cos(angle) * distanceFromCenter * direction;
-    const markerY = centerY + Math.sin(angle) * distanceFromCenter * direction;
-
-    return { x: markerX, y: markerY };
+    // Use the exact click position that was stored (already relative to container)
+    return { x: feedbackData.clickX, y: feedbackData.clickY };
   };
 
   const getLabelDescription = (axisName: string, side: "left" | "right") => {
